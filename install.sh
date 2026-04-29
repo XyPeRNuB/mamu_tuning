@@ -1,15 +1,96 @@
 #!/bin/bash
 set -e
 
-SERVER_IP=$(curl -s4 ifconfig.me || hostname -I | awk '{print $1}')
+echo "===================================="
+echo " Mamu Seedbox Installer"
+echo " qBittorrent + FileBrowser + autobrr"
+echo "===================================="
+
+read -p "Server IP/domain: " SERVER_IP
+read -p "qBittorrent WebUI port [8080]: " QBIT_PORT
+QBIT_PORT=${QBIT_PORT:-8080}
+
+read -p "qBittorrent username [admin]: " QBIT_USER
+QBIT_USER=${QBIT_USER:-admin}
+
+read -s -p "qBittorrent password: " QBIT_PASS
+echo ""
+
+read -p "FileBrowser port [8081]: " FB_PORT
+FB_PORT=${FB_PORT:-8081}
+
+read -p "autobrr port [7474]: " AUTOBRR_PORT
+AUTOBRR_PORT=${AUTOBRR_PORT:-7474}
+
+echo ""
+echo "Choose qBittorrent version:"
+echo "1) 4.6.7"
+echo "2) Debian default"
+read -p "Choice [1]: " QBIT_CHOICE
+QBIT_CHOICE=${QBIT_CHOICE:-1}
+
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ]; then
+  QBT_ARCH="aarch64"
+elif [ "$ARCH" = "x86_64" ]; then
+  QBT_ARCH="x86_64"
+else
+  echo "Unsupported architecture: $ARCH"
+  exit 1
+fi
 
 apt update && apt upgrade -y
+apt install -y curl wget tar ufw ca-certificates python3
 
-apt install -y curl wget gnupg ca-certificates unzip software-properties-common \
-nginx php-fpm php-cli php-curl php-xml php-mbstring php-json php-zip \
-rtorrent screen git ufw qbittorrent-nox
+mkdir -p /home/seedbox/downloads
+mkdir -p /root/.config/qBittorrent/config
+mkdir -p /opt/autobrr
 
-mkdir -p /home/seedbox/downloads /home/seedbox/watch /home/seedbox/.session
+if [ "$QBIT_CHOICE" = "1" ]; then
+  echo "Installing qBittorrent 4.6.7 static build..."
+  wget -O /usr/local/bin/qbittorrent-nox \
+  "https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-4.6.7_v2.0.10/${QBT_ARCH}-qbittorrent-nox"
+  chmod +x /usr/local/bin/qbittorrent-nox
+else
+  echo "Installing Debian default qBittorrent..."
+  apt install -y qbittorrent-nox
+fi
+
+QBIT_HASH=$(python3 - <<EOF
+import hashlib, os, base64
+password = "$QBIT_PASS"
+salt = os.urandom(16)
+dk = hashlib.pbkdf2_hmac("sha512", password.encode(), salt, 100000)
+print("@ByteArray(" + base64.b64encode(salt).decode() + ":" + base64.b64encode(dk).decode() + ")")
+EOF
+)
+
+cat > /root/.config/qBittorrent/config/qBittorrent.conf <<EOF
+[LegalNotice]
+Accepted=true
+
+[Preferences]
+Connection\PortRangeMin=50000
+Connection\PortRangeMax=50000
+Connection\UPnP=true
+Connection\GlobalDLLimit=0
+Connection\GlobalUPLimit=0
+Connection\GlobalDLLimitAlt=0
+Connection\GlobalUPLimitAlt=0
+Connection\MaxConnecs=-1
+Connection\MaxConnecsPerTorrent=-1
+Connection\MaxUploads=-1
+Connection\MaxUploadsPerTorrent=-1
+Bittorrent\DHT=false
+Bittorrent\PeX=false
+Bittorrent\LSD=false
+Bittorrent\QueueingSystemEnabled=false
+Bittorrent\uTP=false
+WebUI\Port=$QBIT_PORT
+WebUI\Username=$QBIT_USER
+WebUI\Password_PBKDF2=$QBIT_HASH
+Downloads\SavePath=/home/seedbox/downloads/
+EOF
 
 cat > /etc/systemd/system/qbittorrent.service <<EOF
 [Unit]
@@ -18,7 +99,7 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/usr/bin/qbittorrent-nox --webui-port=8080
+ExecStart=/usr/local/bin/qbittorrent-nox --webui-port=$QBIT_PORT
 Restart=always
 LimitNOFILE=100000
 
@@ -26,6 +107,7 @@ LimitNOFILE=100000
 WantedBy=multi-user.target
 EOF
 
+echo "Installing FileBrowser..."
 curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
 
 cat > /etc/systemd/system/filebrowser.service <<EOF
@@ -35,76 +117,16 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/usr/local/bin/filebrowser -r /home/seedbox -p 8081
+ExecStart=/usr/local/bin/filebrowser -r /home/seedbox -p $FB_PORT
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-cat > /root/.rtorrent.rc <<EOF
-directory = /home/seedbox/downloads
-session = /home/seedbox/.session
-schedule2 = watch_directory,5,5,load.start=/home/seedbox/watch/*.torrent
-network.port_range.set = 50000-50000
-network.port_random.set = no
-dht.mode.set = auto
-protocol.pex.set = yes
-trackers.use_udp.set = yes
-encoding.add = UTF-8
-scgi_port = 127.0.0.1:5000
-EOF
-
-cat > /etc/systemd/system/rtorrent.service <<EOF
-[Unit]
-Description=rTorrent
-After=network.target
-
-[Service]
-Type=forking
-User=root
-ExecStart=/usr/bin/screen -dmS rtorrent /usr/bin/rtorrent
-ExecStop=/usr/bin/screen -S rtorrent -X quit
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-mkdir -p /var/www/rutorrent
-git clone https://github.com/Novik/ruTorrent.git /var/www/rutorrent
-chown -R www-data:www-data /var/www/rutorrent
-
-cat > /etc/nginx/sites-available/rutorrent <<EOF
-server {
-    listen 8082;
-    server_name _;
-
-    root /var/www/rutorrent;
-    index index.php index.html;
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-
-    location ~ \.php\$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php-fpm.sock;
-    }
-
-    location /RPC2 {
-        scgi_pass 127.0.0.1:5000;
-        include scgi_params;
-    }
-}
-EOF
-
-ln -sf /etc/nginx/sites-available/rutorrent /etc/nginx/sites-enabled/rutorrent
-rm -f /etc/nginx/sites-enabled/default
-
-mkdir -p /opt/autobrr
+echo "Installing autobrr..."
 cd /opt/autobrr
-wget -O autobrr.tar.gz https://github.com/autobrr/autobrr/releases/latest/download/autobrr_linux_arm64.tar.gz
+wget -O autobrr.tar.gz https://github.com/autobrr/autobrr/releases/download/v1.30.0/autobrr_linux_arm64.tar.gz
 tar -xzf autobrr.tar.gz
 chmod +x autobrr
 ln -sf /opt/autobrr/autobrr /usr/local/bin/autobrr
@@ -116,7 +138,7 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/usr/local/bin/autobrr --host 0.0.0.0 --port 7474
+ExecStart=/usr/local/bin/autobrr --host 0.0.0.0 --port $AUTOBRR_PORT
 Restart=always
 
 [Install]
@@ -124,23 +146,21 @@ WantedBy=multi-user.target
 EOF
 
 ufw allow OpenSSH
-ufw allow 8080
-ufw allow 8081
-ufw allow 8082
-ufw allow 7474
+ufw allow "$QBIT_PORT"
+ufw allow "$FB_PORT"
+ufw allow "$AUTOBRR_PORT"
 ufw allow 50000
 ufw --force enable
 
 systemctl daemon-reload
-systemctl enable qbittorrent filebrowser rtorrent nginx autobrr
-systemctl restart nginx
-systemctl start qbittorrent filebrowser rtorrent autobrr
+systemctl enable qbittorrent filebrowser autobrr
+systemctl restart qbittorrent filebrowser autobrr
 
 echo ""
 echo "DONE."
-echo "qBittorrent: http://$SERVER_IP:8080"
-echo "FileBrowser: http://$SERVER_IP:8081"
-echo "ruTorrent: http://$SERVER_IP:8082"
-echo "autobrr: http://$SERVER_IP:7474"
+echo "qBittorrent: http://$SERVER_IP:$QBIT_PORT"
+echo "FileBrowser: http://$SERVER_IP:$FB_PORT"
+echo "autobrr: http://$SERVER_IP:$AUTOBRR_PORT"
 echo ""
-echo "Change passwords immediately."
+echo "qBittorrent username: $QBIT_USER"
+echo "Change/save your passwords safely."
