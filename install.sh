@@ -6,7 +6,9 @@ echo " Mamu Seedbox Installer"
 echo " qBittorrent + FileBrowser + autobrr"
 echo "===================================="
 
-read -p "Server IP/domain: " SERVER_IP
+SERVER_IP=$(curl -s https://ipinfo.io/ip || curl -s4 ifconfig.me || hostname -I | awk '{print $1}')
+echo "Detected server IP: $SERVER_IP"
+
 read -p "qBittorrent WebUI port [8080]: " QBIT_PORT
 QBIT_PORT=${QBIT_PORT:-8080}
 
@@ -32,8 +34,10 @@ QBIT_CHOICE=${QBIT_CHOICE:-1}
 ARCH=$(uname -m)
 if [ "$ARCH" = "aarch64" ]; then
   QBT_ARCH="aarch64"
+  AUTOBRR_ARCH="arm64"
 elif [ "$ARCH" = "x86_64" ]; then
   QBT_ARCH="x86_64"
+  AUTOBRR_ARCH="amd64"
 else
   echo "Unsupported architecture: $ARCH"
   exit 1
@@ -46,6 +50,7 @@ mkdir -p /home/seedbox/downloads
 mkdir -p /root/.config/qBittorrent/config
 mkdir -p /opt/autobrr
 
+# qBittorrent
 if [ "$QBIT_CHOICE" = "1" ]; then
   echo "Installing qBittorrent 4.6.7 static build..."
   wget -O /usr/local/bin/qbittorrent-nox \
@@ -56,6 +61,7 @@ else
   apt install -y qbittorrent-nox
 fi
 
+# Hash password
 QBIT_HASH=$(python3 - <<EOF
 import hashlib, os, base64
 password = "$QBIT_PASS"
@@ -107,6 +113,7 @@ LimitNOFILE=100000
 WantedBy=multi-user.target
 EOF
 
+# FileBrowser
 echo "Installing FileBrowser..."
 curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
 
@@ -124,9 +131,13 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
+# autobrr
 echo "Installing autobrr..."
 cd /opt/autobrr
-wget -O autobrr.tar.gz https://github.com/autobrr/autobrr/releases/download/v1.30.0/autobrr_linux_arm64.tar.gz
+
+wget -O autobrr.tar.gz \
+"https://github.com/autobrr/autobrr/releases/download/v1.28.0/autobrr_linux_${AUTOBRR_ARCH}.tar.gz"
+
 tar -xzf autobrr.tar.gz
 chmod +x autobrr
 ln -sf /opt/autobrr/autobrr /usr/local/bin/autobrr
@@ -145,6 +156,7 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
+# Firewall
 ufw allow OpenSSH
 ufw allow "$QBIT_PORT"
 ufw allow "$FB_PORT"
@@ -152,15 +164,18 @@ ufw allow "$AUTOBRR_PORT"
 ufw allow 50000
 ufw --force enable
 
+# Start services
 systemctl daemon-reload
 systemctl enable qbittorrent filebrowser autobrr
 systemctl restart qbittorrent filebrowser autobrr
 
 echo ""
-echo "DONE."
+echo "===================================="
+echo "INSTALL COMPLETE"
+echo "===================================="
 echo "qBittorrent: http://$SERVER_IP:$QBIT_PORT"
 echo "FileBrowser: http://$SERVER_IP:$FB_PORT"
 echo "autobrr: http://$SERVER_IP:$AUTOBRR_PORT"
 echo ""
-echo "qBittorrent username: $QBIT_USER"
-echo "Change/save your passwords safely."
+echo "Username: $QBIT_USER"
+echo "===================================="
