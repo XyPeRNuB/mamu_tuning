@@ -22,8 +22,7 @@ bash <(curl -sL https://raw.githubusercontent.com/XyPeRNuB/meh/main/install.sh)
 ## What the Script Does
 
 ### During installation, you will:
-
-- Enter your server IP or domain  
+  
 - Choose qBittorrent version  
 - Set WebUI ports  
 - Set username and password  
