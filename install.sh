@@ -135,8 +135,19 @@ EOF
 echo "Installing autobrr..."
 cd /opt/autobrr
 
-wget -O autobrr.tar.gz \
-"https://github.com/autobrr/autobrr/releases/download/v1.28.0/autobrr_linux_${AUTOBRR_ARCH}.tar.gz"
+AUTOBRR_URL=$(curl -s https://api.github.com/repos/autobrr/autobrr/releases/latest \
+  | grep browser_download_url \
+  | grep -E "autobrr.*${AUTOBRR_ARCH}.*tar.gz" \
+  | cut -d '"' -f4 | head -n 1)
+
+if [ -z "$AUTOBRR_URL" ]; then
+  echo "Failed to find autobrr download for $AUTOBRR_ARCH"
+  exit 1
+fi
+
+echo "Downloading: $AUTOBRR_URL"
+
+wget -O autobrr.tar.gz "$AUTOBRR_URL"
 
 tar -xzf autobrr.tar.gz
 chmod +x autobrr
