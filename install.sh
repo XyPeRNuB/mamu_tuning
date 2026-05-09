@@ -511,8 +511,18 @@ _tune_limits() {
 root soft nofile 1048576
 root hard nofile 1048576
 LIMITS
-    sed -i 's/#DefaultLimitNOFILE=/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf 2>/dev/null || true
-    sed -i 's/#DefaultLimitNPROC=/DefaultLimitNPROC=65535/'     /etc/systemd/system.conf 2>/dev/null || true
+    # Fix DefaultLimitNOFILE — replace any existing value or commented line
+    if grep -q '^DefaultLimitNOFILE=' /etc/systemd/system.conf 2>/dev/null; then
+        sed -i 's/^DefaultLimitNOFILE=.*/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf
+    else
+        sed -i 's/^#DefaultLimitNOFILE=.*/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf
+    fi
+    # Fix DefaultLimitNPROC
+    if grep -q '^DefaultLimitNPROC=' /etc/systemd/system.conf 2>/dev/null; then
+        sed -i 's/^DefaultLimitNPROC=.*/DefaultLimitNPROC=65535/' /etc/systemd/system.conf
+    else
+        sed -i 's/^#DefaultLimitNPROC=.*/DefaultLimitNPROC=65535/' /etc/systemd/system.conf
+    fi
     systemctl daemon-reexec >/dev/null 2>&1 || true
 }
 run_step "Setting file descriptor limits" _tune_limits
