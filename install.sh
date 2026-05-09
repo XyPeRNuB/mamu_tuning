@@ -584,18 +584,22 @@ run_step "Setting NIC ring buffer to maximum" _tune_ring_buffer
 
 # ── IRQ affinity — spread NIC interrupts across CPU cores ────
 _tune_irq_affinity() {
-    # Get all network IRQs
-    for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)'); do
+    # IRQ affinity may not be available on VMs — skip gracefully
+    CPU_COUNT=$(nproc)
+    CPU_MASK=1
+    SUCCESS=0
+    for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)' 2>/dev/null); do
         IRQ_LIST=$(grep "${iface}" /proc/interrupts 2>/dev/null | awk -F: '{print $1}' | tr -d ' ')
-        CPU_COUNT=$(nproc)
-        CPU_MASK=1
         for irq in $IRQ_LIST; do
-            echo "$CPU_MASK" > /proc/irq/${irq}/smp_affinity 2>/dev/null || true
-            # Rotate mask to next CPU
-            CPU_MASK=$(( (CPU_MASK * 2) % (2**CPU_COUNT) ))
-            [[ $CPU_MASK -eq 0 ]] && CPU_MASK=1
+            if [[ -w /proc/irq/${irq}/smp_affinity ]]; then
+                echo "$CPU_MASK" > /proc/irq/${irq}/smp_affinity 2>/dev/null && SUCCESS=1 || true
+                CPU_MASK=$(( (CPU_MASK * 2) % (2**CPU_COUNT) ))
+                [[ $CPU_MASK -eq 0 ]] && CPU_MASK=1
+            fi
         done
     done
+    # On VMs IRQ affinity is managed by hypervisor — not an error
+    return 0
 }
 run_step "Setting IRQ affinity across CPU cores" _tune_irq_affinity
 
@@ -618,7 +622,7 @@ run_step "Setting CPU governor to performance mode" _tune_cpu_governor
 
 # ── Disk read-ahead — faster piece reading during seeding ────
 _tune_readahead() {
-    DISK=$(lsblk -d -o NAME,TYPE | awk '\$2=="disk"{print \$1}' | head -1)
+    DISK=$(lsblk -d -o NAME,TYPE | awk '$2=="disk"{print $1}' | head -1)
     if [[ -n "\$DISK" ]]; then
         # Set read-ahead to 4MB (8192 x 512 bytes)
         blockdev --setra 8192 /dev/\${DISK} 2>/dev/null || true
@@ -681,10 +685,10 @@ _tune_bdix() {
         "103.63.196.0/22"
     )
 
-    DEFAULT_GW=$(ip route | awk '/^default/{print \$3}' | head -1)
-    DEFAULT_IF=$(ip route | awk '/^default/{print \$5}' | head -1)
+    DEFAULT_GW=$(ip route | awk '/^default/{print $3}' | head -1)
+    DEFAULT_IF=$(ip route | awk '/^default/{print $5}' | head -1)
 
-    if [[ -n "$DEFAULT_GW" && -n "\$DEFAULT_IF" ]]; then
+    if [[ -n "$DEFAULT_GW" && -n "$DEFAULT_IF" ]]; then
         for range in "${BDIX_RANGES[@]}"; do
             # Add routes with high initcwnd for BDIX ranges (fast local peering)
             ip route add "$range" via "$DEFAULT_GW" dev "$DEFAULT_IF"                 initcwnd 64 initrwnd 64 2>/dev/null || true
