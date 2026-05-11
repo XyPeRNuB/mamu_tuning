@@ -864,7 +864,31 @@ if [[ $INSTALL_JF -eq 1 ]]; then
 section "Jellyfin"
 
 _install_jellyfin() {
-    curl -fsSL https://repo.jellyfin.org/install-debuntu.sh | bash 2>/dev/null
+    # Non-interactive install via direct apt repo setup
+    # (the official install script asks interactive questions and hangs)
+    apt-get install -y -qq curl gnupg
+
+    # Add Jellyfin's signing key
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://repo.jellyfin.org/jellyfin_team.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/jellyfin.gpg 2>/dev/null
+
+    # Get OS info for repo
+    OS_ID=$(awk -F= '/^ID=/{gsub(/"/,"",$2); print $2}' /etc/os-release)
+    OS_CODENAME=$(awk -F= '/^VERSION_CODENAME=/{gsub(/"/,"",$2); print $2}' /etc/os-release)
+
+    cat > /etc/apt/sources.list.d/jellyfin.sources << JFREPO
+Types: deb
+URIs: https://repo.jellyfin.org/${OS_ID}
+Suites: ${OS_CODENAME}
+Components: main
+Architectures: $( dpkg --print-architecture )
+Signed-By: /etc/apt/keyrings/jellyfin.gpg
+JFREPO
+
+    apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq jellyfin
+
     systemctl enable jellyfin >/dev/null 2>&1
     systemctl start  jellyfin
 }
