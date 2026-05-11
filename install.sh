@@ -377,65 +377,79 @@ sed -i '/@include/d' /etc/sysctl.conf 2>/dev/null || true
 # ── sysctl — Jerry048's exact kernel tuning stack ────────────
 _apply_sysctl() {
 cat > /etc/sysctl.d/99-seedbox.conf << 'SYSCTL'
-# ── NETWORK BUFFERS ────────────────────────────────────────
-net.core.rmem_default = 1048576
-net.core.rmem_max = 536870912
-net.core.wmem_default = 1048576
-net.core.wmem_max = 536870912
-net.core.optmem_max = 65536
-net.core.netdev_max_backlog = 250000
-net.core.somaxconn = 65535
+# ── Kernel ────────────────────────────────────────────────
+kernel.pid_max = 4194303
+kernel.msgmnb = 65536
+kernel.msgmax = 65536
+kernel.sched_migration_cost_ns = 5000000
+kernel.sched_autogroup_enabled = 0
+kernel.sched_min_granularity_ns = 10000000
+kernel.sched_wakeup_granularity_ns = 15000000
 
-# ── TCP ────────────────────────────────────────────────────
-net.ipv4.tcp_rmem = 4096 1048576 536870912
-net.ipv4.tcp_wmem = 4096 1048576 536870912
-net.ipv4.tcp_max_syn_backlog = 65535
-net.ipv4.tcp_max_tw_buckets = 1440000
-net.ipv4.tcp_tw_reuse = 1
-net.ipv4.tcp_fin_timeout = 10
-net.ipv4.tcp_slow_start_after_idle = 0
-net.ipv4.tcp_keepalive_time = 60
-net.ipv4.tcp_keepalive_intvl = 10
-net.ipv4.tcp_keepalive_probes = 6
-net.ipv4.tcp_fastopen = 3
-net.ipv4.tcp_mtu_probing = 1
-net.ipv4.tcp_timestamps = 1
-net.ipv4.tcp_sack = 1
-net.ipv4.tcp_window_scaling = 1
-net.ipv4.tcp_adv_win_scale = -2
-net.ipv4.tcp_notsent_lowat = 16384
-net.ipv4.tcp_autocorking = 0
+# ── File system ───────────────────────────────────────────
+fs.file-max = 1048576
+fs.nr_open = 1048576
 
-# ── BBR congestion control ─────────────────────────────────
+# ── Memory ────────────────────────────────────────────────
+vm.dirty_background_ratio = 5
+vm.dirty_ratio = 30
+vm.dirty_expire_centisecs = 1000
+vm.dirty_writeback_centisecs = 100
+vm.swappiness = 10
+
+# ── Network core ──────────────────────────────────────────
+net.core.netdev_budget = 50000
+net.core.netdev_budget_usecs = 8000
+net.core.netdev_max_backlog = 100000
+net.core.rmem_default = 262144
+net.core.rmem_max = 67108864
+net.core.wmem_default = 16384
+net.core.wmem_max = 67108864
+net.core.optmem_max = 4194304
+net.core.somaxconn = 524288
+
+# ── BBR + FQ ──────────────────────────────────────────────
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 
-# ── UDP ────────────────────────────────────────────────────
-net.ipv4.udp_rmem_min = 8192
-net.ipv4.udp_wmem_min = 8192
-
-# ── Connection tracking ────────────────────────────────────
-net.netfilter.nf_conntrack_max = 1048576
-net.netfilter.nf_conntrack_tcp_timeout_established = 600
-net.netfilter.nf_conntrack_tcp_timeout_time_wait = 10
-
-# ── File system ────────────────────────────────────────────
-fs.file-max = 2097152
-fs.nr_open = 2097152
-vm.dirty_ratio = 40
-vm.dirty_background_ratio = 10
-vm.dirty_expire_centisecs = 3000
-vm.dirty_writeback_centisecs = 500
-
-# ── Memory ─────────────────────────────────────────────────
-vm.swappiness = 10
-vm.vfs_cache_pressure = 50
-vm.max_map_count = 262144
-
-# ── Kernel scheduler (Jerry's values) ─────────────────────
-kernel.sched_migration_cost_ns = 5000000
-kernel.sched_min_granularity_ns = 10000000
-kernel.sched_wakeup_granularity_ns = 15000000
+# ── TCP ───────────────────────────────────────────────────
+net.ipv4.ip_local_port_range = 1024 65535
+net.ipv4.tcp_max_syn_backlog = 524288
+net.ipv4.tcp_max_orphans = 262144
+net.ipv4.tcp_max_tw_buckets = 10240
+net.ipv4.tcp_mtu_probing = 2
+net.ipv4.tcp_base_mss = 1460
+net.ipv4.tcp_min_snd_mss = 536
+net.ipv4.tcp_sack = 1
+net.ipv4.tcp_comp_sack_delay_ns = 250000
+net.ipv4.tcp_dsack = 1
+net.ipv4.tcp_early_retrans = 3
+net.ipv4.tcp_ecn = 0
+net.ipv4.tcp_mem = 253962 507925 1015851
+net.ipv4.tcp_rmem = 8192 262144 67108864
+net.ipv4.tcp_wmem = 4096 16384 67108864
+net.ipv4.tcp_moderate_rcvbuf = 1
+net.ipv4.tcp_adv_win_scale = 1
+net.ipv4.tcp_reordering = 10
+net.ipv4.tcp_max_reordering = 600
+net.ipv4.tcp_keepalive_time = 7200
+net.ipv4.tcp_keepalive_probes = 15
+net.ipv4.tcp_keepalive_intvl = 60
+net.ipv4.tcp_retries1 = 3
+net.ipv4.tcp_retries2 = 10
+net.ipv4.tcp_orphan_retries = 2
+net.ipv4.tcp_autocorking = 0
+net.ipv4.tcp_frto = 0
+net.ipv4.tcp_rfc1337 = 1
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_timestamps = 0
+net.ipv4.tcp_fin_timeout = 5
+net.ipv4.tcp_no_metrics_save = 1
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_notsent_lowat = 131072
+net.ipv4.tcp_limit_output_bytes = 3276800
 SYSCTL
 
     # Patch Netcup's sysctl override if present
@@ -456,42 +470,12 @@ NCSYSCTL
 }
 run_step "Applying kernel sysctl settings" _apply_sysctl
 
-# ── txqueuelen — Jerry's approach ────────────────────────────
-_tune_txqueuelen() {
-    for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)'); do
-        ip link set "$iface" txqueuelen 10000 2>/dev/null || true
-    done
-}
-run_step "Setting txqueuelen to 10000" _tune_txqueuelen
-
-# ── TSO/GSO/GRO disable (Jerry's approach for VMs) ───────────
-_disable_tso() {
-    for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)'); do
-        ethtool -K "$iface" tso off gso off gro off 2>/dev/null || true
-    done
-}
-run_step "Disabling TSO/GSO/GRO (VM optimization)" _disable_tso
-
-# ── Initial congestion window (Jerry's approach) ─────────────
-_set_initcwnd() {
-    DEFAULT_GW=$(ip route | awk '/^default/{print $3}' | head -1)
-    DEFAULT_IF=$(ip route | awk '/^default/{print $5}' | head -1)
-    if [[ -n "$DEFAULT_GW" && -n "$DEFAULT_IF" ]]; then
-        ip route change default via "$DEFAULT_GW" dev "$DEFAULT_IF" \
-            initcwnd 32 initrwnd 32 2>/dev/null || true
-    fi
-}
-run_step "Setting initial congestion window to 32" _set_initcwnd
-
 # ── I/O scheduler ────────────────────────────────────────────
 _tune_io() {
     DISK=$(lsblk -d -o NAME,TYPE | awk '$2=="disk"{print $1}' | head -1)
     if [[ -n "$DISK" ]]; then
         echo mq-deadline > /sys/block/${DISK}/queue/scheduler 2>/dev/null || true
         echo 256 > /sys/block/${DISK}/queue/nr_requests 2>/dev/null || true
-        ROTATIONAL=$(cat /sys/block/${DISK}/queue/rotational 2>/dev/null || echo 1)
-        [[ "$ROTATIONAL" == "0" ]] && \
-            echo 2 > /sys/block/${DISK}/queue/nomerges 2>/dev/null || true
         cat > /etc/udev/rules.d/60-io-scheduler.rules << 'UDEV'
 ACTION=="add|change", KERNEL=="vd[a-z]|sd[a-z]|nvme[0-9]n[0-9]", ATTR{queue/scheduler}="mq-deadline"
 ACTION=="add|change", KERNEL=="vd[a-z]|sd[a-z]|nvme[0-9]n[0-9]", ATTR{queue/nr_requests}="256"
@@ -511,13 +495,11 @@ _tune_limits() {
 root soft nofile 1048576
 root hard nofile 1048576
 LIMITS
-    # Fix DefaultLimitNOFILE — replace any existing value or commented line
     if grep -q '^DefaultLimitNOFILE=' /etc/systemd/system.conf 2>/dev/null; then
         sed -i 's/^DefaultLimitNOFILE=.*/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf
     else
         sed -i 's/^#DefaultLimitNOFILE=.*/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf
     fi
-    # Fix DefaultLimitNPROC
     if grep -q '^DefaultLimitNPROC=' /etc/systemd/system.conf 2>/dev/null; then
         sed -i 's/^DefaultLimitNPROC=.*/DefaultLimitNPROC=65535/' /etc/systemd/system.conf
     else
@@ -543,238 +525,6 @@ WantedBy=multi-user.target
 SVC
 systemctl daemon-reload
 systemctl enable sysctl-seedbox.service >/dev/null 2>&1
-
-# ── Boot script (Jerry's approach — re-applies runtime settings) ──
-cat > /root/.boot-script.sh << 'BOOTSCRIPT'
-#!/bin/bash
-# Mamu Seedbox — Boot tuning (re-applies after reboot)
-sleep 30
-
-# Re-apply txqueuelen
-for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)'); do
-    ip link set "$iface" txqueuelen 10000 2>/dev/null || true
-    ethtool -K "$iface" tso off gso off gro off 2>/dev/null || true
-done
-
-# Re-apply initial congestion window
-DEFAULT_GW=$(ip route | awk '/^default/{print $3}' | head -1)
-DEFAULT_IF=$(ip route | awk '/^default/{print $5}' | head -1)
-if [[ -n "$DEFAULT_GW" && -n "$DEFAULT_IF" ]]; then
-    ip route change default via "$DEFAULT_GW" dev "$DEFAULT_IF" \
-        initcwnd 32 initrwnd 32 2>/dev/null || true
-fi
-BOOTSCRIPT
-chmod +x /root/.boot-script.sh
-
-cat > /etc/systemd/system/boot-script.service << 'BOOTSVC'
-[Unit]
-Description=Mamu Seedbox boot tuning
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/root/.boot-script.sh
-RemainAfterExit=true
-
-[Install]
-WantedBy=multi-user.target
-BOOTSVC
-systemctl enable boot-script.service >/dev/null 2>&1
-
-# ── NIC ring buffer (more packets buffered before drop) ──────
-_tune_ring_buffer() {
-    for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)'); do
-        MAX_RX=$(ethtool -g "$iface" 2>/dev/null | awk '/^Pre-set/{getline; print $2}' | head -1)
-        if [[ -n "$MAX_RX" && "$MAX_RX" -gt 0 ]]; then
-            ethtool -G "$iface" rx "$MAX_RX" tx "$MAX_RX" 2>/dev/null || true
-        fi
-    done
-}
-run_step "Setting NIC ring buffer to maximum" _tune_ring_buffer
-
-# ── IRQ affinity — spread NIC interrupts across CPU cores ────
-_tune_irq_affinity() {
-    # IRQ affinity may not be available on VMs — skip gracefully
-    CPU_COUNT=$(nproc)
-    CPU_MASK=1
-    SUCCESS=0
-    for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)' 2>/dev/null); do
-        IRQ_LIST=$(grep "${iface}" /proc/interrupts 2>/dev/null | awk -F: '{print $1}' | tr -d ' ')
-        for irq in $IRQ_LIST; do
-            if [[ -w /proc/irq/${irq}/smp_affinity ]]; then
-                echo "$CPU_MASK" > /proc/irq/${irq}/smp_affinity 2>/dev/null && SUCCESS=1 || true
-                CPU_MASK=$(( (CPU_MASK * 2) % (2**CPU_COUNT) ))
-                [[ $CPU_MASK -eq 0 ]] && CPU_MASK=1
-            fi
-        done
-    done
-    # On VMs IRQ affinity is managed by hypervisor — not an error
-    return 0
-}
-run_step "Setting IRQ affinity across CPU cores" _tune_irq_affinity
-
-# ── CPU governor — force performance mode ────────────────────
-_tune_cpu_governor() {
-    if [[ -d /sys/devices/system/cpu/cpu0/cpufreq ]]; then
-        for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-            echo "performance" > "$cpu" 2>/dev/null || true
-        done
-        # Persist via cpufrequtils if available
-        apt-get install -y -qq cpufrequtils 2>/dev/null || true
-        if command -v cpufreq-set &>/dev/null; then
-            for i in $(seq 0 $(($(nproc)-1))); do
-                cpufreq-set -c $i -g performance 2>/dev/null || true
-            done
-        fi
-    fi
-}
-run_step "Setting CPU governor to performance mode" _tune_cpu_governor
-
-# ── Disk read-ahead — faster piece reading during seeding ────
-_tune_readahead() {
-    DISK=$(lsblk -d -o NAME,TYPE | awk '$2=="disk"{print $1}' | head -1)
-    if [[ -n "\$DISK" ]]; then
-        # Set read-ahead to 4MB (8192 x 512 bytes)
-        blockdev --setra 8192 /dev/\${DISK} 2>/dev/null || true
-        # Persist via udev
-        cat >> /etc/udev/rules.d/60-io-scheduler.rules << UDEV2
-ACTION=="add|change", KERNEL=="vd[a-z]|sd[a-z]|nvme[0-9]n[0-9]", RUN+="/sbin/blockdev --setra 8192 /dev/%k"
-UDEV2
-    fi
-}
-run_step "Setting disk read-ahead to 4MB" _tune_readahead
-
-# ── BDIX peer tuning ─────────────────────────────────────────
-# BDIX = Bangladesh Internet Exchange
-# Local peering IPs get optimized routing for max throughput
-_tune_bdix() {
-    # BDIX IP ranges (common Bangladeshi ISP peering ranges)
-    BDIX_RANGES=(
-        "103.4.0.0/16"      # BDIX core
-        "103.12.0.0/16"     # BD ISPs
-        "103.16.0.0/16"
-        "103.26.0.0/16"
-        "103.48.0.0/16"
-        "103.56.0.0/16"
-        "103.68.0.0/16"
-        "103.72.0.0/16"
-        "103.80.0.0/16"
-        "103.92.0.0/16"
-        "103.100.0.0/16"
-        "103.108.0.0/16"
-        "103.120.0.0/16"
-        "103.132.0.0/16"
-        "103.156.0.0/16"
-        "103.168.0.0/16"
-        "103.196.0.0/16"
-        "103.228.0.0/16"
-        "202.4.96.0/20"     # BTTB/BTCL
-        "202.84.0.0/16"     # BD legacy ranges
-        "202.134.0.0/16"
-        "210.4.64.0/19"
-        "27.147.128.0/17"   # Grameenphone
-        "58.145.176.0/20"   # BDCOM
-        "103.7.248.0/22"    # Carnival Internet
-        "103.11.0.0/22"     # Dhaka Fiber Net
-        "103.15.248.0/22"
-        "103.17.200.0/22"
-        "103.23.160.0/22"
-        "103.27.220.0/22"
-        "103.29.44.0/22"
-        "103.31.232.0/22"
-        "103.35.108.0/22"
-        "103.39.48.0/22"
-        "103.41.216.0/22"   # Link3 Technologies
-        "103.43.240.0/22"
-        "103.47.132.0/22"
-        "103.51.68.0/22"
-        "103.53.44.0/22"
-        "103.55.68.0/22"
-        "103.57.16.0/22"
-        "103.61.192.0/22"
-        "103.63.196.0/22"
-    )
-
-    DEFAULT_GW=$(ip route | awk '/^default/{print $3}' | head -1)
-    DEFAULT_IF=$(ip route | awk '/^default/{print $5}' | head -1)
-
-    if [[ -n "$DEFAULT_GW" && -n "$DEFAULT_IF" ]]; then
-        for range in "${BDIX_RANGES[@]}"; do
-            # Add routes with high initcwnd for BDIX ranges (fast local peering)
-            ip route add "$range" via "$DEFAULT_GW" dev "$DEFAULT_IF"                 initcwnd 64 initrwnd 64 2>/dev/null || true
-        done
-    fi
-
-    # Extra sysctl tweaks for low-latency local peering
-    sysctl -w net.ipv4.tcp_low_latency=1      2>/dev/null || true
-    sysctl -w net.ipv4.route.gc_timeout=100   2>/dev/null || true
-
-    # Persist BDIX sysctl
-    cat >> /etc/sysctl.d/99-seedbox.conf << BDIXSYSCTL
-
-# ── BDIX local peering optimization ────────────────────────
-net.ipv4.route.gc_timeout = 100
-BDIXSYSCTL
-}
-run_step "Applying BDIX peer routing optimization" _tune_bdix
-
-# ── libtorrent advanced tuning (written for qBit) ────────────
-_tune_libtorrent() {
-    mkdir -p /home/${USERNAME}/.config/qBittorrent
-    cat > /home/${USERNAME}/.config/qBittorrent/qBittorrent.conf.libtorrent << LTCONF
-# libtorrent advanced settings for racing
-# Applied via qBittorrent advanced tab on first run
-#
-# These are the key values:
-# aio_threads = NCORES           (async IO threads)
-# send_buffer_watermark = 524288 (512KB send buffer)
-# send_buffer_low_watermark = 10240
-# send_buffer_watermark_factor = 100
-# suggest_mode = 1               (tell peers what you have)
-# choking_algorithm = 0          (fixed slots - best for seeding)
-# seed_choking_algorithm = 1     (fastest upload - round robin)
-# share_ratio_limit = 0          (no ratio limit)
-# peer_turnover = 4
-# peer_turnover_cutoff = 90
-# peer_turnover_interval = 300
-# connection_speed = 500         (500 new connections/sec)
-# mixed_mode_algorithm = 0       (prefer TCP over uTP)
-# allow_multiple_connections_per_ip = true
-LTCONF
-    chown -R "${USERNAME}:${USERNAME}" /home/${USERNAME}/.config/qBittorrent/
-}
-run_step "Writing libtorrent advanced tuning notes" _tune_libtorrent
-
-# ── Update boot script with all new tuning ───────────────────
-cat >> /root/.boot-script.sh << 'BOOTSCRIPT2'
-
-# NIC ring buffer
-for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)'); do
-    MAX_RX=$(ethtool -g "$iface" 2>/dev/null | awk '/^Pre-set/{getline; print $2}' | head -1)
-    [[ -n "$MAX_RX" && "$MAX_RX" -gt 0 ]] &&         ethtool -G "$iface" rx "$MAX_RX" tx "$MAX_RX" 2>/dev/null || true
-done
-
-# CPU governor
-for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-    echo "performance" > "$cpu" 2>/dev/null || true
-done
-
-# Disk read-ahead
-DISK=$(lsblk -d -o NAME,TYPE | awk '$2=="disk"{print $1}' | head -1)
-[[ -n "$DISK" ]] && blockdev --setra 8192 /dev/${DISK} 2>/dev/null || true
-
-# IRQ affinity
-for iface in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)'); do
-    IRQ_LIST=$(grep "${iface}" /proc/interrupts 2>/dev/null | awk -F: '{print $1}' | tr -d ' ')
-    CPU_COUNT=$(nproc)
-    CPU_MASK=1
-    for irq in $IRQ_LIST; do
-        echo "$CPU_MASK" > /proc/irq/${irq}/smp_affinity 2>/dev/null || true
-        CPU_MASK=$(( (CPU_MASK * 2) % (2**CPU_COUNT) ))
-        [[ $CPU_MASK -eq 0 ]] && CPU_MASK=1
-    done
-done
-BOOTSCRIPT2
 
 success "Kernel tuning complete."
 fi # end DO_TUNING
@@ -839,48 +589,35 @@ _write_qbt_config() {
 
     cat > "${QBT_CONF_DIR}/qBittorrent.conf" << QBTCONF
 [Application]
-MemoryWorkingSetLimit=$(( TOTAL_RAM_MB / 3 ))
+MemoryWorkingSetLimit=2048
 
 [BitTorrent]
 Session\AsyncIOThreadsCount=${NCORES}
-Session\CoalesceReadWrite=true
-Session\ConnectionSpeed=500
 Session\DefaultSavePath=${DOWNLOAD_DIR}
-Session\DiskCacheSize=${CACHE_MB}
-Session\DiskCacheTTL=60
-Session\DiskIOReadMode=EnableOSCache
-Session\DiskIOWriteMode=EnableOSCache
-Session\DiskQueueSize=1024
-Session\FilePoolSize=5000
-Session\GlobalMaxSeedingMinutes=-1
-Session\GlobalUPSpeedLimit=0
-Session\GlobalDLSpeedLimit=0
-Session\MaxActiveCheckingTorrents=5
-Session\MaxActiveTorrents=-1
-Session\MaxActiveUploads=-1
-Session\MaxActiveDownloads=-1
-Session\MaxConnections=3000
-Session\MaxConnectionsPerTorrent=300
-Session\MaxUploads=-1
-Session\MaxUploadsPerTorrent=100
+Session\DiskCacheSize=2048
 Session\Port=${QBT_PORT}
 Session\QueueingSystemEnabled=false
-Session\SendBufferLowWatermark=10240
-Session\SendBufferWatermark=524288
-Session\SendBufferWatermarkFactor=100
-Session\SlowTorrentsDownloadRateThreshold=-1
-Session\SlowTorrentsInactivityTimer=60
-Session\SlowTorrentsUploadRateThreshold=-1
-Session\SuggestMode=true
-Session\uTPMixedMode=TCP
-Session\UseOSCache=true
-Session\ValidateHTTPSTrackerCertificate=false
-Session\MultiConnectionsPerIp=true
-Session\AnnounceToAllTiers=true
-Session\AnnounceToAllTrackers=true
-Session\PeerTurnover=4
-Session\PeerTurnoverCutoff=90
-Session\PeerTurnoverInterval=300
+Session\SendBufferLowWatermark=3072
+Session\SendBufferWatermark=15360
+Session\SendBufferWatermarkFactor=200
+
+# ── TorrentBD recommended settings ─────────────────────────
+Session\BTProtocol=TCP
+Session\MaxConnections=500
+Session\MaxConnectionsPerTorrent=100
+Session\MaxUploads=20
+Session\MaxUploadsPerTorrent=10
+Session\DHTEnabled=false
+Session\PeXEnabled=false
+Session\LSDEnabled=false
+Session\Encryption=1
+Session\AnonymousModeEnabled=false
+Session\GlobalDLSpeedLimit=0
+Session\GlobalUPSpeedLimit=0
+Session\IncludeOverheadInLimits=false
+Session\LimitLANPeers=true
+Session\LimitTCPOverhead=false
+Session\UseAlternativeGlobalSpeedLimit=false
 
 [LegalNotice]
 Accepted=true
@@ -902,7 +639,7 @@ QBTCONF
 
     chown -R "${USERNAME}:${USERNAME}" "$QBT_CONF_DIR"
 }
-run_step "Writing pre-tuned qBittorrent config" _write_qbt_config
+run_step "Writing qBittorrent config" _write_qbt_config
 
 systemctl daemon-reload
 systemctl enable "qbittorrent-nox@${USERNAME}" >/dev/null 2>&1
