@@ -107,16 +107,25 @@ USERNAME=$(whiptail --inputbox \
     --title "Mamu Seedbox — Setup" 3>&1 1>&2 2>&3) || error "Cancelled."
 [[ -z "$USERNAME" ]] && error "Username cannot be empty."
 
-# Password
-PASSWORD=$(whiptail --passwordbox \
-    "Enter a password:" 10 60 \
-    --title "Mamu Seedbox — Setup" 3>&1 1>&2 2>&3) || error "Cancelled."
-[[ -z "$PASSWORD" ]] && error "Password cannot be empty."
+# Check if user already exists — skip password prompts if so
+PASSWORD=""
+if id "$USERNAME" &>/dev/null; then
+    whiptail --msgbox "User '$USERNAME' already exists.\nSkipping password setup — using existing account." 10 60 \
+        --title "Mamu Seedbox — Existing User"
+    USER_EXISTS=1
+else
+    USER_EXISTS=0
+    # Password
+    PASSWORD=$(whiptail --passwordbox \
+        "Enter a password:" 10 60 \
+        --title "Mamu Seedbox — Setup" 3>&1 1>&2 2>&3) || error "Cancelled."
+    [[ -z "$PASSWORD" ]] && error "Password cannot be empty."
 
-PASSWORD2=$(whiptail --passwordbox \
-    "Confirm password:" 10 60 \
-    --title "Mamu Seedbox — Setup" 3>&1 1>&2 2>&3) || error "Cancelled."
-[[ "$PASSWORD" != "$PASSWORD2" ]] && error "Passwords do not match."
+    PASSWORD2=$(whiptail --passwordbox \
+        "Confirm password:" 10 60 \
+        --title "Mamu Seedbox — Setup" 3>&1 1>&2 2>&3) || error "Cancelled."
+    [[ "$PASSWORD" != "$PASSWORD2" ]] && error "Passwords do not match."
+fi
 
 # Download directory
 DOWNLOAD_DIR=$(whiptail --inputbox \
@@ -645,22 +654,24 @@ systemctl daemon-reload
 systemctl enable "qbittorrent-nox@${USERNAME}" >/dev/null 2>&1
 systemctl start  "qbittorrent-nox@${USERNAME}"
 
-# ── Set WebUI password via API ────────────────────────────────
-sleep 4
-QB_API="http://127.0.0.1:${QBT_WEBUI_PORT}"
-for i in {1..20}; do
-    LOGIN=$(curl -s -c /tmp/qbt_c -b /tmp/qbt_c \
-        -d "username=admin&password=adminadmin" \
-        "${QB_API}/api/v2/auth/login" 2>/dev/null || true)
-    if [[ "$LOGIN" == "Ok." ]]; then
-        curl -s -b /tmp/qbt_c -X POST "${QB_API}/api/v2/app/setPreferences" \
-            -d "json={\"web_ui_username\":\"${USERNAME}\",\"web_ui_password\":\"${PASSWORD}\"}" \
-            >/dev/null 2>&1 || true
-        break
-    fi
-    sleep 2
-done
-rm -f /tmp/qbt_c
+# ── Set WebUI password via API (only for new users) ─────────
+if [[ -n "$PASSWORD" ]]; then
+    sleep 4
+    QB_API="http://127.0.0.1:${QBT_WEBUI_PORT}"
+    for i in {1..20}; do
+        LOGIN=$(curl -s -c /tmp/qbt_c -b /tmp/qbt_c \
+            -d "username=admin&password=adminadmin" \
+            "${QB_API}/api/v2/auth/login" 2>/dev/null || true)
+        if [[ "$LOGIN" == "Ok." ]]; then
+            curl -s -b /tmp/qbt_c -X POST "${QB_API}/api/v2/app/setPreferences" \
+                -d "json={\"web_ui_username\":\"${USERNAME}\",\"web_ui_password\":\"${PASSWORD}\"}" \
+                >/dev/null 2>&1 || true
+            break
+        fi
+        sleep 2
+    done
+    rm -f /tmp/qbt_c
+fi
 success "qBittorrent running on :${QBT_WEBUI_PORT}"
 fi
 
