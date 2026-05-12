@@ -329,10 +329,15 @@ chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}" 2>/dev/null || true
 
 # ── UFW ──────────────────────────────────────────────────────
 _setup_ufw() {
-    ufw --force reset >/dev/null 2>&1
-    ufw default deny incoming >/dev/null 2>&1
-    ufw default allow outgoing >/dev/null 2>&1
-    ufw allow ssh >/dev/null 2>&1
+    # Only reset if UFW is not yet configured (fresh install)
+    # On reinstall, just ADD new rules without wiping existing ones
+    if ! ufw status | grep -q "Status: active" 2>/dev/null; then
+        ufw --force reset >/dev/null 2>&1
+        ufw default deny incoming >/dev/null 2>&1
+        ufw default allow outgoing >/dev/null 2>&1
+        ufw allow ssh >/dev/null 2>&1
+    fi
+    # Always add ports for selected apps (safe to run multiple times)
     [[ $INSTALL_QBT -eq 1 ]] && ufw allow "${QBT_WEBUI_PORT}/tcp" >/dev/null 2>&1
     [[ $INSTALL_QBT -eq 1 ]] && ufw allow "${QBT_PORT}/tcp" >/dev/null 2>&1
     [[ $INSTALL_QBT -eq 1 ]] && ufw allow "${QBT_PORT}/udp" >/dev/null 2>&1
