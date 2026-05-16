@@ -326,21 +326,25 @@ DO_TUNING=0; ENABLE_BBR3=0; DO_SWAP=0
 # ============================================================
 QBT_VER="4.6.7"
 if [[ $INSTALL_QBT -eq 1 && $QBT_INSTALLED -eq 0 ]]; then
-    QBT_VER=$(whiptail --menu \
-        "Select qBittorrent version:" 14 55 5 \
-        "4.6.7" "★ 4.6.7  (recommended, stable)" \
-        "4.6.6" "  4.6.6" \
-        "4.6.5" "  4.6.5" \
-        "4.6.4" "  4.6.4" \
-        "4.5.5" "  4.5.5  (legacy)" \
-        --title "Mamu Tuning — qBittorrent Version" 3>&1 1>&2 2>&3) || QBT_VER="4.6.7"
-
-    # Static vs dynamic build
+    # Build type first
     QBT_BUILD=$(whiptail --menu \
-        "Select build type:" 12 60 2 \
-        "static"  "Static  — no system deps (recommended)" \
-        "dynamic" "Dynamic — uses system libtorrent" \
-        --title "Mamu Tuning — qBittorrent Build" 3>&1 1>&2 2>&3) || QBT_BUILD="static"
+        "Select qBittorrent build type:" 12 65 2 \
+        "static"  "Static build  — recommended (pre-built binary)" \
+        "system"  "System build  — use distro package (apt)" \
+        --title "Mamu Tuning — qBittorrent" 3>&1 1>&2 2>&3) || QBT_BUILD="static"
+
+    # Version picker only for static
+    QBT_VER="4.6.7"
+    if [[ "$QBT_BUILD" == "static" ]]; then
+        QBT_VER=$(whiptail --menu \
+            "Select qBittorrent version:" 14 55 5 \
+            "4.6.7" "Recommended — stable" \
+            "4.6.6" "Stable" \
+            "4.6.5" "Stable" \
+            "4.6.4" "Stable" \
+            "4.5.5" "Legacy" \
+            --title "Mamu Tuning — qBittorrent Version" 3>&1 1>&2 2>&3) || QBT_VER="4.6.7"
+    fi
 
     while true; do
         QBT_CACHE=$(whiptail --inputbox \
@@ -704,11 +708,17 @@ if [[ $INSTALL_QBT -eq 1 || $INSTALL_AB -eq 1 ]]; then
 
     CMD_FLAGS="-u $USERNAME -p $PASSWORD -c ${QBT_CACHE:-2048} -q $QBT_VER -l $LIB_VER $FLAG_B $FLAG_NET"
 
-    info "Running seedbox installer..."
-    if ! bash <(wget -qO- https://raw.githubusercontent.com/jerry048/Dedicated-Seedbox/main/Install.sh) $CMD_FLAGS; then
-        warn "Seedbox installer had warnings. Check $LOG_FILE"
+    if [[ "${QBT_BUILD:-static}" == "system" ]]; then
+        info "Installing qBittorrent from system package..."
+        apt-get install -y qbittorrent-nox >> "$LOG_FILE" 2>&1
+        ok "qBittorrent installed from system package."
     else
-        ok "qBittorrent + autobrr installed."
+        info "Running seedbox installer (static build)..."
+        if ! bash <(wget -qO- https://raw.githubusercontent.com/jerry048/Dedicated-Seedbox/main/Install.sh) $CMD_FLAGS; then
+            warn "Seedbox installer had warnings. Check $LOG_FILE"
+        else
+            ok "qBittorrent + autobrr installed."
+        fi
     fi
 fi
 
