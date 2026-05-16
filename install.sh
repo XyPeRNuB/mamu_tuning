@@ -163,12 +163,15 @@ fi
 # Detect installed apps
 QBT_INSTALLED=0; RT_INSTALLED=0; AB_INSTALLED=0
 JF_INSTALLED=0; FB_INSTALLED=0; QUI_INSTALLED=0
-command -v qbittorrent-nox &>/dev/null && QBT_INSTALLED=1
-command -v rtorrent &>/dev/null && RT_INSTALLED=1
-command -v autobrr &>/dev/null && AB_INSTALLED=1
-systemctl is-active --quiet jellyfin 2>/dev/null && JF_INSTALLED=1
-command -v filebrowser &>/dev/null && FB_INSTALLED=1
-command -v qui &>/dev/null && QUI_INSTALLED=1
+
+# qBit — check multiple possible locations (Jerry installs to /usr/local/bin or /home/user)
+{ command -v qbittorrent-nox &>/dev/null ||   systemctl is-active --quiet "qbittorrent-nox@${USERNAME}" 2>/dev/null ||   [[ -f "/home/${USERNAME}/.local/share/qBittorrent" ]] ||   find /home -name "qbittorrent-nox" -type f 2>/dev/null | grep -q .; } && QBT_INSTALLED=1 || true
+
+command -v rtorrent &>/dev/null && RT_INSTALLED=1 || true
+{ command -v autobrr &>/dev/null || systemctl is-active --quiet "autobrr@${USERNAME}" 2>/dev/null; } && AB_INSTALLED=1 || true
+systemctl is-active --quiet jellyfin 2>/dev/null && JF_INSTALLED=1 || true
+command -v filebrowser &>/dev/null && FB_INSTALLED=1 || true
+command -v qui &>/dev/null && QUI_INSTALLED=1 || true
 ANYTHING_INSTALLED=$(( QBT_INSTALLED + RT_INSTALLED + AB_INSTALLED + JF_INSTALLED + FB_INSTALLED + QUI_INSTALLED ))
 
 MODE="install"
