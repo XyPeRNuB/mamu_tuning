@@ -1,20 +1,21 @@
 <div align="center">
 
 ```
- ███╗   ███╗ █████╗ ███╗   ███╗██╗   ██╗    ████████╗██╗   ██╗███╗   ██╗██╗███╗   ██╗ ██████╗
- ████╗ ████║██╔══██╗████╗ ████║██║   ██║    ╚══██╔══╝██║   ██║████╗  ██║██║████╗  ██║██╔════╝
- ██╔████╔██║███████║██╔████╔██║██║   ██║       ██║   ██║   ██║██╔██╗ ██║██║██╔██╗ ██║██║  ███╗
- ██║╚██╔╝██║██╔══██║██║╚██╔╝██║██║   ██║       ██║   ██║   ██║██║╚██╗██║██║██║╚██╗██║██║   ██║
- ██║ ╚═╝ ██║██║  ██║██║ ╚═╝ ██║╚██████╔╝       ██║   ╚██████╔╝██║ ╚████║██║██║ ╚████║╚██████╔╝
- ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝        ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚═╝╚═╝  ╚═══╝ ╚═════╝
+  ███╗   ███╗ █████╗ ███╗   ███╗██╗   ██╗    ████████╗██╗   ██╗███╗   ██╗██╗███╗   ██╗ ██████╗
+  ████╗ ████║██╔══██╗████╗ ████║██║   ██║    ╚══██╔══╝██║   ██║████╗  ██║██║████╗  ██║██╔════╝
+  ██╔████╔██║███████║██╔████╔██║██║   ██║       ██║   ██║   ██║██╔██╗ ██║██║██╔██╗ ██║██║  ███╗
+  ██║╚██╔╝██║██╔══██║██║╚██╔╝██║██║   ██║       ██║   ██║   ██║██║╚██╗██║██║██║╚██╗██║██║   ██║
+  ██║ ╚═╝ ██║██║  ██║██║ ╚═╝ ██║╚██████╔╝       ██║   ╚██████╔╝██║ ╚████║██║██║ ╚████║╚██████╔╝
+  ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝        ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚═╝╚═╝  ╚═══╝ ╚═════╝
 ```
 
-**Seedbox Installer v2.0**
+**Seedbox Installer v4.0**
 
-A clean, interactive seedbox installer for Debian/Ubuntu with kernel tuning and pre-configured qBittorrent optimized for private tracker racing. Features install/uninstall support and swizzin-style UI.
+A modular, interactive seedbox installer for Debian/Ubuntu with kernel tuning tested specifically on Netcup ARM64 — built for private tracker racing.
 
 [![OS](https://img.shields.io/badge/OS-Debian%2011%2F12%20%7C%20Ubuntu%2020.04%2B-blue?style=flat-square)](https://debian.org)
 [![Arch](https://img.shields.io/badge/Arch-ARM64%20%7C%20x86__64-green?style=flat-square)](https://github.com/XyPeRNuB/mamu_tuning)
+[![Version](https://img.shields.io/badge/Version-4.0-cyan?style=flat-square)](https://github.com/XyPeRNuB/mamu_tuning)
 
 </div>
 
@@ -32,60 +33,45 @@ Or with wget:
 bash <(wget -qO- https://raw.githubusercontent.com/XyPeRNuB/mamu_tuning/main/install.sh)
 ```
 
-> Run as **root**. Supports Debian 11/12 and Ubuntu 20.04/22.04/24.04 on both ARM64 and x86_64.
+> Run as **root**. Supports Debian 11/12 and Ubuntu 20.04/22.04/24.04 on ARM64 and x86_64.
 
 ---
 
 ## 📺 Interface
 
-Interactive whiptail UI — like swizzin. Navigate with arrow keys, Space to select, Enter to confirm.
+Swizzin-style interactive UI. Navigate with arrow keys, Space to select, Enter to confirm.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   Mamu Seedbox — Apps                       │
+│                   Mamu Tuning — Apps                        │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  Select apps to install:                                    │
-│  [INSTALLED] = already on system, will be skipped           │
+│  (Space to select, Enter to confirm)                        │
 │                                                             │
-│  [ ] qBittorrent-nox  (torrent client)                      │
-│  [ ] rTorrent + ruTorrent  (web UI)                         │
-│  [ ] autobrr  (autodl / racing)                             │
-│  [ ] Jellyfin  (media server)                               │
-│  [ ] FileBrowser  (file manager)                            │
-│  [*] Kernel tuning  (BBR + optimizations)                   │
-│  [*] Create 4GB swapfile                                    │
+│  [ ] qbt          qBittorrent-nox                           │
+│  [ ] rtorrent     rTorrent + ruTorrent                      │
+│  [ ] autobrr      autobrr                                   │
+│  [ ] jellyfin     Jellyfin                                  │
+│  [ ] filebrowser  FileBrowser                               │
+│  [ ] qui          Qui Dashboard                             │
+│  [ ] media        Media Tools                               │
+│  [ ] tuning       Kernel Tuning                             │
+│  [ ] bbr3         BBRv3                                     │
+│  [ ] swap         4GB Swapfile                              │
 │                                                             │
-│               <OK>              <Cancel>                    │
+│               <Ok>              <Cancel>                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                qBittorrent — Version                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  (*) 4.6.7   (recommended, stable)                          │
-│  ( ) 4.6.6                                                  │
-│  ( ) 4.6.5                                                  │
-│  ( ) 4.6.4                                                  │
-│  ( ) 4.6.3                                                  │
-│  ( ) 4.6.2                                                  │
-│  ( ) 4.5.5                                                  │
-│  ( ) 4.5.4                                                  │
-│                                                             │
-│               <OK>              <Cancel>                    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                 What do you want to do?                     │
+│              What do you want to do?                        │
 │                                                             │
 │  (*) Install / Add new apps                                 │
-│  ( ) Uninstall / Remove apps                                │   
+│  ( ) Uninstall / Remove apps                                │
 │                                                             │
-│               <OK>              <Cancel>                    │
+│               <Ok>              <Cancel>                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -95,62 +81,95 @@ Interactive whiptail UI — like swizzin. Navigate with arrow keys, Space to sel
 
 | App | Description | Default Port |
 |-----|-------------|-------------|
-| **qBittorrent-nox** | Torrent client with pre-tuned config | WebUI: `8080` · Peer: `45000` |
-| **rTorrent + ruTorrent** | rTorrent daemon with ruTorrent web UI | `8090` |
+| **qBittorrent-nox** | Static build, pre-tuned for private trackers | WebUI: `8080` · Peer: `45000` |
+| **rTorrent + ruTorrent** | rTorrent with ruTorrent web UI | `8090` |
 | **autobrr** | Autodl / torrent racing automation | `7474` |
 | **Jellyfin** | Open source media server | `8096` |
-| **FileBrowser** | Web-based file manager | `8888` |
+| **FileBrowser** | Web-based file manager | `808` |
+| **Qui** | qBittorrent unified dashboard | `7476` |
 
-> All ports are configurable during install. Already installed apps are detected and skipped automatically.
+> All ports are configurable during install. Re-run anytime to add or remove apps.
+
+---
+
+## 🛠️ Media Tools
+
+When Media Tools is selected, the following get installed automatically:
+
+- **ffmpeg** — video processing
+- **mediainfo** — file information
+- **aria2** — fast multi-connection downloader
+- **mkvtoolnix** — MKV file tools
+- **mktorrent** — torrent creator
+- **mkbrr** — fast torrent creator for racing
+- **fastfetch** — system info
+- **Bento4** — MP4/streaming tools
+- **Torrent creator script** — saved to `/home/user/qbittorrent/Downloads/main.py`
 
 ---
 
 ## ⚙️ Kernel Tuning
 
-Clean, proven sysctl tuning — no over-optimization.
+Tuning values tested on **Netcup ARM64 Neoverse-N1** — not generic internet copy-paste.
+
+### What we found and fixed
+- **RPS was disabled** — all packets going to one core. Fixed: enabled across all 6 cores
+- **rwnd_limited at 54%** — receive window was bottlenecking throughput. Fixed: buffer sizes calculated from actual BDP (254MB/s × 300ms RTT)
+- **reordering:204** — very high packet reordering observed. Fixed: increased reordering tolerance
 
 ### Network
-| Setting | Value | Effect |
-|---------|-------|--------|
-| Congestion control | BBR | Better throughput |
+| Setting | Value | Why |
+|---------|-------|-----|
+| Congestion control | BBR | Aggressive throughput |
 | Queue discipline | FQ | Fair packet pacing |
-| rmem_max / wmem_max | 64MB | Balanced socket buffers |
+| rmem_max / wmem_max | 128MB | Sized for 250MB/s+ lines |
+| tcp_rmem / tcp_wmem | 4K → 128MB | Auto-scales to line speed |
+| tcp_notsent_lowat | 16KB | Send pieces immediately |
+| tcp_reordering | 16 | Matches observed reordering on Netcup |
+| rps_sock_flow_entries | 196608 | RFS flow steering |
 | netdev_max_backlog | 100,000 | Handle packet bursts |
 | somaxconn | 524,288 | High connection queue |
-| tcp_max_syn_backlog | 524,288 | SYN flood resilience |
 | tcp_fastopen | 3 | Faster connection setup |
 | tcp_tw_reuse | enabled | Reuse TIME_WAIT sockets |
-| tcp_notsent_lowat | 128KB | Reduce bufferbloat |
+
+### Multiqueue RPS/RFS/XPS
+All 6 network queues are configured to spread traffic across all CPU cores:
+- **RPS** — steers incoming packets across cores (was disabled by default)
+- **RFS** — keeps related flows on the same core for cache efficiency
+- **XPS** — steers outgoing packets to matching TX queue
+
+Persists across reboots via systemd service.
 
 ### System
 | Setting | Value | Effect |
 |---------|-------|--------|
-| File descriptors | 1,048,576 | Handle thousands of torrents |
+| File descriptors | 2,097,152 | Handle thousands of open torrents |
 | pid_max | 4,194,303 | More processes |
-| I/O scheduler | mq-deadline | Optimal for SSD/NVMe |
+| I/O scheduler | mq-deadline | Optimal for virtio disk |
 | vm.swappiness | 10 | Keep hot data in RAM |
 | Swapfile | 4GB | OOM protection |
-| tuned daemon | disabled | Prevents sysctl override |
+| tuned daemon | disabled | Prevents cloud provider sysctl override |
 
 ---
 
-## 🔧 qBittorrent Pre-tuning
+## 🔧 qBittorrent Config
 
-Pre-configured with proven racing settings for private trackers.
+Pre-configured for private tracker racing out of the box.
 
 | Setting | Value | Why |
 |---------|-------|-----|
-| Async IO threads | = CPU core count | Max parallel disk IO |
+| Async IO threads | = CPU cores | Max parallel disk IO |
 | Disk cache | 2048 MB | Fast piece access |
 | Protocol | TCP only | Max bandwidth for private trackers |
-| Max connections | 500 | TorrentBD recommended |
-| Max conn/torrent | 100 | TorrentBD recommended |
-| Upload slots | 20 | TorrentBD recommended |
-| Upload slots/torrent | 10 | TorrentBD recommended |
-| DHT / PeX / LSD | Disabled | Required for private trackers |
+| Max connections | 500 | Racing optimized |
+| Max conn/torrent | 100 | Racing optimized |
+| Upload slots | 20 | Balanced peer turnover |
+| Upload slots/torrent | 10 | Balanced peer turnover |
+| DHT / PeX / LSD | Disabled | Private tracker only |
 | Send buffer watermark | 15360 | Proven racing value |
 | Speed limits | Unlimited | Full bandwidth |
-| Rate limit overhead | Disabled | Don't count overhead |
+| Peer turnover | enabled | Replace slow peers aggressively |
+| Announce to all tiers | enabled | Faster tracker announces |
 
 ---
 
@@ -167,14 +186,14 @@ Pre-configured with proven racing settings for private trackers.
 
 - Fresh VPS or dedicated server
 - Root access
-- Minimum 1GB RAM (4GB+ recommended)
+- Minimum 2GB RAM (4GB+ recommended for racing)
 - Minimum 20GB disk space
 
 ---
 
 ## 🔁 Re-running the Installer
 
-Safe to run multiple times. Already installed apps are detected and skipped — only new selections get installed.
+Safe to run multiple times. Already installed apps show `[INSTALLED]`. Use Uninstall mode to remove apps.
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/XyPeRNuB/mamu_tuning/main/install.sh)
@@ -185,12 +204,16 @@ bash <(curl -sL https://raw.githubusercontent.com/XyPeRNuB/mamu_tuning/main/inst
 ## 📁 File Structure
 
 ```
-/etc/sysctl.d/99-seedbox.conf       ← kernel tuning settings
-/etc/systemd/system/sysctl-seedbox.service  ← apply on boot
-/etc/udev/rules.d/60-io-scheduler.rules     ← I/O scheduler
-/home/<user>/.config/qBittorrent/   ← qBit config
-/home/<user>/rtorrent/              ← rTorrent data
-/etc/filebrowser/                   ← FileBrowser config
+/etc/sysctl.d/99-mamu-tuning.conf         ← kernel tuning (tested values)
+/etc/systemd/system/mamu-sysctl.service   ← apply sysctl on boot
+/etc/systemd/system/mamu-multiqueue.service ← RPS/RFS/XPS on boot
+/etc/mamu-multiqueue.sh                   ← multiqueue setup script
+/etc/udev/rules.d/60-io-scheduler.rules   ← I/O scheduler persistence
+/home/<user>/.config/qBittorrent/         ← qBit config
+/home/<user>/rtorrent/                    ← rTorrent data
+/root/.config/qui/config.toml             ← Qui config
+/root/filebrowser.db                      ← FileBrowser database
+/root/mamu_install.log                    ← install log
 ```
 
 ---

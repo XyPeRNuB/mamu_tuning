@@ -279,16 +279,16 @@ fi
 
 SELECTED=$(whiptail --checklist \
     "Select apps to install:\n(Space to select, Enter to confirm)" 22 65 10 \
-    "qbt"       "$QBT_LABEL"          ON \
+    "qbt"       "$QBT_LABEL"          OFF \
     "rtorrent"  "$RT_LABEL"           OFF \
-    "autobrr"   "$AB_LABEL"           ON \
+    "autobrr"   "$AB_LABEL"           OFF \
     "jellyfin"  "$JF_LABEL"           OFF \
-    "filebrowser" "$FB_LABEL"         ON \
-    "qui"       "$QUI_LABEL"          ON \
-    "media"     "Media Tools"         ON \
-    "tuning"    "Kernel Tuning"       ON \
-    "bbr3"      "BBRv3"               ON \
-    "swap"      "4GB Swapfile"        ON \
+    "filebrowser" "$FB_LABEL"         OFF \
+    "qui"       "$QUI_LABEL"          OFF \
+    "media"     "Media Tools"         OFF \
+    "tuning"    "Kernel Tuning"       OFF \
+    "bbr3"      "BBRv3"               OFF \
+    "swap"      "4GB Swapfile"        OFF \
     --title "Mamu Tuning — Apps" 3>&1 1>&2 2>&3) || { clear; exit 0; }
 
 INSTALL_QBT=0; INSTALL_RT=0; INSTALL_AB=0; INSTALL_JF=0
@@ -498,26 +498,26 @@ vm.dirty_writeback_centisecs = 100
 vm.vfs_cache_pressure = 50
 
 # ── Network core ──────────────────────────────────────────────
-net.core.rmem_default = 524288
+net.core.rmem_default = 131072
 net.core.rmem_max = 134217728
-net.core.wmem_default = 524288
+net.core.wmem_default = 131072
 net.core.wmem_max = 134217728
 net.core.optmem_max = 4194304
 net.core.netdev_max_backlog = 100000
 net.core.netdev_budget = 50000
 net.core.netdev_budget_usecs = 8000
 net.core.somaxconn = 524288
-net.core.rps_sock_flow_entries = 32768
+net.core.rps_sock_flow_entries = 196608
 
 # ── BBR + FQ ──────────────────────────────────────────────────
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 
 # ── TCP buffers ───────────────────────────────────────────────
-net.ipv4.tcp_rmem = 4096 524288 134217728
-net.ipv4.tcp_wmem = 4096 524288 134217728
+net.ipv4.tcp_rmem = 4096 131072 134217728
+net.ipv4.tcp_wmem = 4096 131072 134217728
 net.ipv4.tcp_moderate_rcvbuf = 1
-net.ipv4.tcp_adv_win_scale = -2
+net.ipv4.tcp_adv_win_scale = 1
 net.ipv4.tcp_notsent_lowat = 16384
 net.ipv4.tcp_limit_output_bytes = 1048576
 net.ipv4.tcp_autocorking = 0
@@ -548,8 +548,8 @@ net.ipv4.tcp_syn_retries = 4
 net.ipv4.tcp_synack_retries = 5
 net.ipv4.tcp_frto = 2
 net.ipv4.tcp_rfc1337 = 1
-net.ipv4.tcp_reordering = 6
-net.ipv4.tcp_max_reordering = 300
+net.ipv4.tcp_reordering = 16
+net.ipv4.tcp_max_reordering = 600
 net.ipv4.tcp_ecn = 0
 net.ipv4.tcp_comp_sack_delay_ns = 250000
 
