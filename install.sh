@@ -458,6 +458,13 @@ if [[ $DO_TUNING -eq 1 ]]; then
         systemctl stop tuned 2>/dev/null || true
         systemctl disable tuned 2>/dev/null || true
         sed -i '/@include/d' /etc/sysctl.conf 2>/dev/null || true
+
+        # Patch /etc/sysctl.conf — Jerry's installer sets wrong buffer values here
+        # which loads last and overrides our settings
+        sed -i 's/^net.core.rmem_max = .*/net.core.rmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
+        sed -i 's/^net.core.wmem_max = .*/net.core.wmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
+        sed -i 's/^net.ipv4.tcp_rmem = .*/net.ipv4.tcp_rmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
+        sed -i 's/^net.ipv4.tcp_wmem = .*/net.ipv4.tcp_wmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
         modprobe nf_conntrack 2>/dev/null || true
         echo "nf_conntrack" > /etc/modules-load.d/conntrack.conf
         # Patch Netcup override
