@@ -711,6 +711,13 @@ if [[ $INSTALL_QBT -eq 1 || $INSTALL_AB -eq 1 ]]; then
         else
             ok "qBittorrent + autobrr installed."
         fi
+        # Re-patch sysctl.conf — Jerry's installer overwrites buffer values
+        sed -i 's/^net.core.rmem_max = .*/net.core.rmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
+        sed -i 's/^net.core.wmem_max = .*/net.core.wmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
+        sed -i 's/^net.ipv4.tcp_rmem = .*/net.ipv4.tcp_rmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
+        sed -i 's/^net.ipv4.tcp_wmem = .*/net.ipv4.tcp_wmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
+        sysctl -p /etc/sysctl.conf >> "$LOG_FILE" 2>&1 || true
+        sysctl -p /etc/sysctl.d/99-mamu-tuning.conf >> "$LOG_FILE" 2>&1 || true
     fi
 fi
 
