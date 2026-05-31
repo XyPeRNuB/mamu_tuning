@@ -286,14 +286,13 @@ SELECTED=$(whiptail --checklist \
     "filebrowser" "$FB_LABEL"         OFF \
     "qui"       "$QUI_LABEL"          OFF \
     "media"     "Media Tools"         OFF \
-    "tuning"    "Kernel Tuning"       OFF \
     "bbr3"      "BBRv3"               OFF \
     "swap"      "4GB Swapfile"        OFF \
     --title "Mamu Tuning — Apps" 3>&1 1>&2 2>&3) || { clear; exit 0; }
 
 INSTALL_QBT=0; INSTALL_RT=0; INSTALL_AB=0; INSTALL_JF=0
 INSTALL_FB=0; INSTALL_QUI=0; INSTALL_MEDIA=0
-DO_TUNING=0; ENABLE_BBR3=0; DO_SWAP=0
+ENABLE_BBR3=0; DO_SWAP=0
 
 [[ "$SELECTED" == *"qbt"*        ]] && INSTALL_QBT=1
 [[ "$SELECTED" == *"rtorrent"*   ]] && INSTALL_RT=1
@@ -302,7 +301,6 @@ DO_TUNING=0; ENABLE_BBR3=0; DO_SWAP=0
 [[ "$SELECTED" == *"filebrowser"* ]] && INSTALL_FB=1
 [[ "$SELECTED" == *"qui"*        ]] && INSTALL_QUI=1
 [[ "$SELECTED" == *"media"*      ]] && INSTALL_MEDIA=1
-[[ "$SELECTED" == *"tuning"*     ]] && DO_TUNING=1
 [[ "$SELECTED" == *"bbr3"*       ]] && ENABLE_BBR3=1
 [[ "$SELECTED" == *"swap"*       ]] && DO_SWAP=1
 
@@ -449,240 +447,6 @@ if [[ $DO_SWAP -eq 1 ]]; then
     run_step "Creating 4GB swapfile" _create_swap
 fi
 
-# ── Kernel tuning ─────────────────────────────────────────────
-if [[ $DO_TUNING -eq 1 ]]; then
-    echo ""
-    echo -e "  ${MAGENTA}Kernel Tuning${NC}"
-
-    _disable_tuned() {
-        systemctl stop tuned 2>/dev/null || true
-        systemctl disable tuned 2>/dev/null || true
-        sed -i '/@include/d' /etc/sysctl.conf 2>/dev/null || true
-
-        # Patch /etc/sysctl.conf — Jerry's installer sets wrong buffer values here
-        # which loads last and overrides our settings
-        sed -i 's/^net.core.rmem_max = .*/net.core.rmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        sed -i 's/^net.core.wmem_max = .*/net.core.wmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        sed -i 's/^net.ipv4.tcp_rmem = .*/net.ipv4.tcp_rmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        sed -i 's/^net.ipv4.tcp_wmem = .*/net.ipv4.tcp_wmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        modprobe nf_conntrack 2>/dev/null || true
-        echo "nf_conntrack" > /etc/modules-load.d/conntrack.conf
-        # Patch Netcup override
-        if [[ -f /etc/sysctl.d/99-nc-kernel.conf ]]; then
-            cp /etc/sysctl.d/99-nc-kernel.conf /etc/sysctl.d/99-nc-kernel.conf.bak
-            cat > /etc/sysctl.d/99-nc-kernel.conf << 'EOF'
-vm.dirty_background_ratio = 10
-vm.dirty_ratio = 40
-kernel.watchdog_thresh = 20
-net.core.rmem_max = 134217728
-net.core.wmem_max = 134217728
-net.ipv4.tcp_rmem = 4096 524288 134217728
-net.ipv4.tcp_wmem = 4096 524288 134217728
-EOF
-        fi
-    }
-    run_step "Disabling conflicting services" _disable_tuned
-
-    _apply_sysctl() {
-        cat > /etc/sysctl.d/99-mamu-tuning.conf << 'EOF'
-# ── Kernel scheduler ──────────────────────────────────────────
-kernel.pid_max = 4194303
-kernel.sched_migration_cost_ns = 5000000
-kernel.sched_autogroup_enabled = 0
-kernel.sched_min_granularity_ns = 10000000
-kernel.sched_wakeup_granularity_ns = 15000000
-
-# ── File system ───────────────────────────────────────────────
-fs.file-max = 2097152
-fs.nr_open = 2097152
-
-# ── Memory ────────────────────────────────────────────────────
-vm.swappiness = 10
-vm.dirty_background_ratio = 5
-vm.dirty_ratio = 30
-vm.dirty_expire_centisecs = 1000
-vm.dirty_writeback_centisecs = 100
-vm.vfs_cache_pressure = 50
-
-# ── Network core ──────────────────────────────────────────────
-net.core.rmem_default = 131072
-net.core.rmem_max = 134217728
-net.core.wmem_default = 131072
-net.core.wmem_max = 134217728
-net.core.optmem_max = 4194304
-net.core.netdev_max_backlog = 100000
-net.core.netdev_budget = 50000
-net.core.netdev_budget_usecs = 8000
-net.core.somaxconn = 524288
-net.core.rps_sock_flow_entries = 196608
-
-# ── BBR + FQ ──────────────────────────────────────────────────
-net.core.default_qdisc = fq
-net.ipv4.tcp_congestion_control = bbr
-
-# ── TCP buffers ───────────────────────────────────────────────
-net.ipv4.tcp_rmem = 4096 131072 134217728
-net.ipv4.tcp_wmem = 4096 131072 134217728
-net.ipv4.tcp_moderate_rcvbuf = 1
-net.ipv4.tcp_adv_win_scale = 1
-net.ipv4.tcp_notsent_lowat = 16384
-net.ipv4.tcp_limit_output_bytes = 1048576
-net.ipv4.tcp_autocorking = 0
-net.ipv4.tcp_fastopen = 3
-net.ipv4.tcp_timestamps = 0
-net.ipv4.tcp_sack = 1
-net.ipv4.tcp_dsack = 1
-net.ipv4.tcp_early_retrans = 3
-net.ipv4.tcp_mtu_probing = 1
-net.ipv4.tcp_window_scaling = 1
-net.ipv4.tcp_tw_reuse = 1
-net.ipv4.tcp_fin_timeout = 10
-net.ipv4.tcp_slow_start_after_idle = 0
-net.ipv4.tcp_max_syn_backlog = 524288
-net.ipv4.tcp_max_tw_buckets = 10240
-net.ipv4.tcp_max_orphans = 262144
-net.ipv4.tcp_no_metrics_save = 1
-net.ipv4.ip_local_port_range = 1024 65535
-net.ipv4.udp_rmem_min = 8192
-net.ipv4.udp_wmem_min = 8192
-
-# ── TCP retransmission tuning ─────────────────────────────────
-# Reduces aggressive retransmission on high-latency connections
-net.ipv4.tcp_retries1 = 3
-net.ipv4.tcp_retries2 = 8
-net.ipv4.tcp_orphan_retries = 2
-net.ipv4.tcp_syn_retries = 4
-net.ipv4.tcp_synack_retries = 5
-net.ipv4.tcp_frto = 2
-net.ipv4.tcp_rfc1337 = 1
-net.ipv4.tcp_reordering = 16
-net.ipv4.tcp_max_reordering = 600
-net.ipv4.tcp_ecn = 0
-net.ipv4.tcp_comp_sack_delay_ns = 250000
-
-# ── Conntrack ─────────────────────────────────────────────────
-net.netfilter.nf_conntrack_max = 1048576
-net.netfilter.nf_conntrack_tcp_timeout_established = 600
-net.netfilter.nf_conntrack_tcp_timeout_time_wait = 10
-EOF
-        sysctl -p /etc/sysctl.d/99-mamu-tuning.conf >> "$LOG_FILE" 2>&1 || true
-    }
-    run_step "Applying kernel sysctl settings" _apply_sysctl
-
-    # ── Multiqueue + RPS/RFS ──────────────────────────────────
-    _setup_multiqueue() {
-        CPU_COUNT=$(nproc)
-        CPU_MASK=$(printf '%x' $(( (1 << CPU_COUNT) - 1 )))
-
-        for IFACE in $(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)' 2>/dev/null); do
-            # RPS — steer incoming packets across all CPU cores
-            for RX in /sys/class/net/${IFACE}/queues/rx-*/rps_cpus; do
-                [[ -w "$RX" ]] && echo "$CPU_MASK" > "$RX" 2>/dev/null || true
-            done
-            # RFS — keep flows on same CPU for cache efficiency
-            for RX in /sys/class/net/${IFACE}/queues/rx-*/rps_flow_cnt; do
-                [[ -w "$RX" ]] && echo 32768 > "$RX" 2>/dev/null || true
-            done
-            # XPS — steer outgoing packets to matching TX queue
-            TX_COUNT=$(ls /sys/class/net/${IFACE}/queues/ | grep -c '^tx-' 2>/dev/null || echo 1)
-            TX_IDX=0
-            for TX in /sys/class/net/${IFACE}/queues/tx-*/xps_cpus; do
-                [[ -w "$TX" ]] && echo "$(printf '%x' $((1 << TX_IDX % CPU_COUNT)))" > "$TX" 2>/dev/null || true
-                TX_IDX=$((TX_IDX + 1))
-            done
-        done
-
-        # Persist across reboots
-        cat > /etc/systemd/system/mamu-multiqueue.service << MQSVC
-[Unit]
-Description=Mamu Tuning - Multiqueue RPS/RFS/XPS
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash /etc/mamu-multiqueue.sh
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-MQSVC
-
-        cat > /etc/mamu-multiqueue.sh << MQSH
-#!/bin/bash
-CPU_COUNT=\$(nproc)
-CPU_MASK=\$(printf '%x' \$(( (1 << CPU_COUNT) - 1 )))
-for IFACE in \$(ls /sys/class/net/ | grep -E '^(eth|ens|eno|enp|venet)' 2>/dev/null); do
-    for RX in /sys/class/net/\${IFACE}/queues/rx-*/rps_cpus; do
-        [[ -w "\$RX" ]] && echo "\$CPU_MASK" > "\$RX" 2>/dev/null || true
-    done
-    for RX in /sys/class/net/\${IFACE}/queues/rx-*/rps_flow_cnt; do
-        [[ -w "\$RX" ]] && echo 32768 > "\$RX" 2>/dev/null || true
-    done
-    TX_IDX=0
-    for TX in /sys/class/net/\${IFACE}/queues/tx-*/xps_cpus; do
-        [[ -w "\$TX" ]] && echo "\$(printf '%x' \$((1 << TX_IDX % CPU_COUNT)))" > "\$TX" 2>/dev/null || true
-        TX_IDX=\$((TX_IDX + 1))
-    done
-done
-MQSH
-        chmod +x /etc/mamu-multiqueue.sh
-        systemctl daemon-reload >> "$LOG_FILE" 2>&1
-        systemctl enable mamu-multiqueue.service >> "$LOG_FILE" 2>&1
-    }
-    run_step "Setting up multiqueue RPS/RFS/XPS" _setup_multiqueue
-
-    _setup_limits() {
-        grep -q '1048576' /etc/security/limits.conf 2>/dev/null || \
-        cat >> /etc/security/limits.conf << 'EOF'
-* soft nofile 1048576
-* hard nofile 1048576
-* soft nproc  65535
-* hard nproc  65535
-root soft nofile 1048576
-root hard nofile 1048576
-EOF
-        if grep -q '^DefaultLimitNOFILE=' /etc/systemd/system.conf 2>/dev/null; then
-            sed -i 's/^DefaultLimitNOFILE=.*/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf
-        else
-            sed -i 's/^#DefaultLimitNOFILE=.*/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf
-        fi
-        systemctl daemon-reexec >> "$LOG_FILE" 2>&1 || true
-    }
-    run_step "Setting file descriptor limits" _setup_limits
-
-    _setup_io() {
-        DISK=$(lsblk -d -o NAME,TYPE | awk '$2=="disk"{print $1}' | head -1)
-        if [[ -n "$DISK" ]]; then
-            echo mq-deadline > /sys/block/${DISK}/queue/scheduler 2>/dev/null || true
-            echo 256 > /sys/block/${DISK}/queue/nr_requests 2>/dev/null || true
-            cat > /etc/udev/rules.d/60-io-scheduler.rules << 'EOF'
-ACTION=="add|change", KERNEL=="vd[a-z]|sd[a-z]|nvme[0-9]n[0-9]", ATTR{queue/scheduler}="mq-deadline"
-ACTION=="add|change", KERNEL=="vd[a-z]|sd[a-z]|nvme[0-9]n[0-9]", ATTR{queue/nr_requests}="256"
-EOF
-        fi
-    }
-    run_step "Setting I/O scheduler (mq-deadline)" _setup_io
-
-    # Persistent sysctl service
-    cat > /etc/systemd/system/mamu-sysctl.service << 'EOF'
-[Unit]
-Description=Mamu Tuning sysctl settings
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/sbin/sysctl -p /etc/sysctl.d/99-mamu-tuning.conf
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    systemctl daemon-reload >> "$LOG_FILE" 2>&1
-    systemctl enable mamu-sysctl.service >> "$LOG_FILE" 2>&1
-
-    ok "Kernel tuning complete."
-fi
-
 # ── Main seedbox install ──────────────────────────────────────
 if [[ $INSTALL_QBT -eq 1 || $INSTALL_AB -eq 1 ]]; then
     echo ""
@@ -711,13 +475,7 @@ if [[ $INSTALL_QBT -eq 1 || $INSTALL_AB -eq 1 ]]; then
         else
             ok "qBittorrent + autobrr installed."
         fi
-        # Re-patch sysctl.conf — Jerry's installer overwrites buffer values
-        sed -i 's/^net.core.rmem_max = .*/net.core.rmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        sed -i 's/^net.core.wmem_max = .*/net.core.wmem_max = 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        sed -i 's/^net.ipv4.tcp_rmem = .*/net.ipv4.tcp_rmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        sed -i 's/^net.ipv4.tcp_wmem = .*/net.ipv4.tcp_wmem = 4096 131072 134217728/' /etc/sysctl.conf 2>/dev/null || true
-        sysctl -p /etc/sysctl.conf >> "$LOG_FILE" 2>&1 || true
-        sysctl -p /etc/sysctl.d/99-mamu-tuning.conf >> "$LOG_FILE" 2>&1 || true
+
     fi
 fi
 
@@ -1071,7 +829,6 @@ if [[ $INSTALL_MEDIA -eq 1 ]]; then
 fi
 
 echo ""
-echo -e "  ${YELLOW}⚠  Reboot recommended to apply all tuning.${NC}"
 [[ $ENABLE_BBR3 -eq 1 ]] && echo -e "  ${YELLOW}⚠  BBRv3 selected — reboot required.${NC}"
 echo -e "  ${YELLOW}⚠  Change passwords after first login!${NC}"
 echo ""
