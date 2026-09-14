@@ -412,6 +412,12 @@ fi
 mkdir -p "$DOWNLOAD_DIR"
 chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}" 2>/dev/null || true
 
+# Keep the download directory group-accessible for Jellyfin.
+if [[ -d "$DOWNLOAD_DIR" ]]; then
+    chown "${USERNAME}:${USERNAME}" "$DOWNLOAD_DIR" 2>/dev/null || true
+    chmod 2770 "$DOWNLOAD_DIR" 2>/dev/null || true
+fi
+
 # ── Firewall ─────────────────────────────────────────────────
 _setup_ufw() {
     if ! ufw status | grep -q "Status: active" 2>/dev/null; then
@@ -475,8 +481,43 @@ if [[ $INSTALL_QBT -eq 1 || $INSTALL_AB -eq 1 ]]; then
         else
             ok "qBittorrent + autobrr installed."
         fi
-
     fi
+
+    # Ensure qBittorrent creates group-accessible files for Jellyfin.
+    # The qBittorrent service is detected instead of assuming a fixed unit name.
+    _configure_qbt_permissions() {
+        local qbt_service
+
+        qbt_service=$(systemctl list-unit-files --type=service --no-legend 2>/dev/null \
+            | awk '{print $1}' \
+            | grep -E '(^|-)qbittorrent.*\.service$' \
+            | head -n1 || true)
+
+        if [[ -z "$qbt_service" ]]; then
+            qbt_service=$(systemctl list-units --type=service --all --no-legend 2>/dev/null \
+                | awk '{print $1}' \
+                | grep -E '(^|-)qbittorrent.*\.service$' \
+                | head -n1 || true)
+        fi
+
+        if [[ -n "$qbt_service" ]]; then
+            mkdir -p "/etc/systemd/system/${qbt_service}.d"
+            cat > "/etc/systemd/system/${qbt_service}.d/permissions.conf" << EOF
+[Service]
+UMask=0007
+EOF
+            systemctl daemon-reload >> "$LOG_FILE" 2>&1
+            if systemctl restart "$qbt_service" >> "$LOG_FILE" 2>&1; then
+                ok "qBittorrent permissions configured (UMask=0007)."
+            else
+                warn "Could not restart $qbt_service after applying UMask=0007."
+            fi
+        else
+            warn "Could not find the qBittorrent systemd service; UMask was not changed."
+        fi
+    }
+
+    _configure_qbt_permissions
 fi
 
 # ── rTorrent + ruTorrent ──────────────────────────────────────
@@ -627,6 +668,15 @@ Signed-By: /etc/apt/keyrings/jellyfin.gpg
 JFREPO
         apt-get update -qq >> "$LOG_FILE" 2>&1
         DEBIAN_FRONTEND=noninteractive apt-get install -y -qq jellyfin >> "$LOG_FILE" 2>&1
+
+        # Allow Jellyfin to read media owned by the seedbox user's group.
+        if getent group "$USERNAME" >/dev/null 2>&1; then
+            usermod -aG "$USERNAME" jellyfin >> "$LOG_FILE" 2>&1
+            ok "Jellyfin added to group $USERNAME for media access."
+        else
+            warn "Group $USERNAME was not found; Jellyfin media group access was not configured."
+        fi
+
         systemctl enable jellyfin >> "$LOG_FILE" 2>&1
         systemctl start jellyfin >> "$LOG_FILE" 2>&1
     }
